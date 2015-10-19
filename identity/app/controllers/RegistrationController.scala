@@ -40,6 +40,8 @@ class RegistrationController @Inject()( returnUrlVerifier : ReturnUrlVerifier,
       emailKey -> Forms.text,
       "user.publicFields.username" -> Forms.text,
       passwordKey -> Forms.text,
+      "dataSubjectId" -> Forms.text,
+      "eagent" -> Forms.text,
       "receive_gnm_marketing" -> Forms.boolean,
       "receive_third_party_marketing" -> Forms.boolean
     )
@@ -52,6 +54,8 @@ class RegistrationController @Inject()( returnUrlVerifier : ReturnUrlVerifier,
       emailKey -> idRegEmail,
       "user.publicFields.username" -> Forms.text,
       passwordKey -> idPassword,
+      "eagent" -> idEagent,
+      "dataSubjectId" -> idDataSubject,
       "receive_gnm_marketing" -> Forms.boolean,
       "receive_third_party_marketing" -> Forms.boolean
     )
@@ -61,7 +65,7 @@ class RegistrationController @Inject()( returnUrlVerifier : ReturnUrlVerifier,
     logger.trace("Rendering registration form")
 
     val idRequest = idRequestParser(request)
-    val filledForm = registrationForm.bindFromFlash.getOrElse(registrationForm.fill("", "", "", "", "", true, false))
+    val filledForm = registrationForm.bindFromFlash.getOrElse(registrationForm.fill("", "", "", "", "", "", "", true, false))
     val registrationError = request.getQueryString("error")
     val groupCode = idRequest.groupCode.orElse(group)
 
@@ -80,7 +84,7 @@ class RegistrationController @Inject()( returnUrlVerifier : ReturnUrlVerifier,
     val trackingData = idRequest.trackingData
     val skipConfirmation = idRequest.skipConfirmation
 
-    def onError(formWithErrors: Form[(String, String, String, String, String, Boolean, Boolean)]): Future[Result] = {
+    def onError(formWithErrors: Form[(String, String, String, String, String, String, String, Boolean, Boolean)]): Future[Result] = {
       logger.info("Invalid registration request")
       formWithErrors.error("user.primaryEmailAddress") match {
         case Some(FormError("user.primaryEmailAddress", Seq("This domain is blacklisted"), _)) => {
@@ -94,8 +98,8 @@ class RegistrationController @Inject()( returnUrlVerifier : ReturnUrlVerifier,
       }
     }
 
-    def onSuccess(form: (String, String, String, String, String, Boolean, Boolean)): Future[Result] = form match {
-      case (firstName, secondName, email, username, password, gnmMarketing, thirdPartyMarketing) =>
+    def onSuccess(form: (String, String, String, String, String, String, String, Boolean, Boolean)): Future[Result] = form match {
+      case (firstName, secondName, email, username, password, eagent, dataSubjectId, gnmMarketing, thirdPartyMarketing) =>
         val user = userCreationService.createUser(firstName, secondName, email, username, password, gnmMarketing, thirdPartyMarketing, idRequest.clientIp)
         val groupAgreeReturnUrlOpt = ThirdPartyConditions.agreeUrlOpt(idRequest, idUrlBuilder).orElse(idRequest.returnUrl)
         val registeredUser: Future[Response[User]] = api.register(user, trackingData, idRequest.returnUrl)
@@ -108,7 +112,7 @@ class RegistrationController @Inject()( returnUrlVerifier : ReturnUrlVerifier,
                   form.withError(context.getOrElse(""), description)
               }
             }
-            formWithError.fill(firstName, secondName, email, username, "", thirdPartyMarketing, gnmMarketing)
+            formWithError.fill(firstName, secondName, email, username, "", eagent, dataSubjectId, thirdPartyMarketing, gnmMarketing)
             Future.successful(redirectToRegistrationPage(formWithError, idRequest.returnUrl, skipConfirmation, idRequest.groupCode))
           }
 
@@ -145,20 +149,20 @@ class RegistrationController @Inject()( returnUrlVerifier : ReturnUrlVerifier,
     boundForm.fold[Future[Result]](onError, onSuccess)
   }
 
-  private def redirectToRegistrationPage(formWithErrors: Form[(String, String, String, String, String, Boolean, Boolean)],
+  private def redirectToRegistrationPage(formWithErrors: Form[(String, String, String, String, String, String, String, Boolean, Boolean)],
                                          returnUrl: Option[String], skipConfirmation: Option[Boolean], groupCode: Option[String]) = NoCache(
     SeeOther(routes.RegistrationController.renderForm(returnUrl, skipConfirmation, groupCode).url).flashing(
       clearPassword(formWithErrors).toFlash
     )
   )
 
-  private def redirectToRegistrationPageWithoutErrors(formWithErrors: Form[(String, String, String, String, String, Boolean, Boolean)],
+  private def redirectToRegistrationPageWithoutErrors(formWithErrors: Form[(String, String, String, String, String, String, String, Boolean, Boolean)],
                                                       returnUrl: Option[String], skipConfirmation: Option[Boolean], groupCode: Option[String]) = NoCache(
     SeeOther(routes.RegistrationController.renderForm(returnUrl, skipConfirmation, groupCode).url).flashing(formWithErrors.toFlashWithDataDiscarded)
   )
 
 
-  private def clearPassword(formWithPassword: Form[(String, String, String, String, String, Boolean, Boolean)]) = {
+  private def clearPassword(formWithPassword: Form[(String, String, String, String, String, String, String, Boolean, Boolean)]) = {
     val dataWithoutPassword = formWithPassword.data + (passwordKey -> "")
     formWithPassword.copy(data = dataWithoutPassword)
   }

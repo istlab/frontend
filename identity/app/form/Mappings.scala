@@ -48,4 +48,7 @@ trait Mappings extends I18nSupport {
 
   val idCountry = comboList("" :: Countries.all)
 
+  val idDataSubject: Mapping[String] = nonEmptyText(maxLength = 30)
+
+  val idEagent: Mapping[String] = nonEmptyText(maxLength = 20)
 }
