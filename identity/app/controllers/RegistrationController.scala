@@ -1,9 +1,12 @@
 package controllers
 
+import java.io.IOException
+
 import client._
 import common.ExecutionContexts
 import com.google.inject.Inject
 import com.gu.identity.model.User
+import org.pdguard.api.exceptions.{EscrowAgentErrorResponseException, RegistrationFailedException}
 import utils.{ThirdPartyConditions, SafeLogging}
 import ThirdPartyConditions._
 import idapiclient.{ IdApiClient, EmailPassword }
@@ -40,8 +43,8 @@ class RegistrationController @Inject()( returnUrlVerifier : ReturnUrlVerifier,
       emailKey -> Forms.text,
       "user.publicFields.username" -> Forms.text,
       passwordKey -> Forms.text,
-      "dataSubjectId" -> Forms.text,
       "eagent" -> Forms.text,
+      "dataSubjectId" -> Forms.text,
       "receive_gnm_marketing" -> Forms.boolean,
       "receive_third_party_marketing" -> Forms.boolean
     )
@@ -102,8 +105,16 @@ class RegistrationController @Inject()( returnUrlVerifier : ReturnUrlVerifier,
       case (firstName, secondName, email, username, password, eagent, dataSubjectId, gnmMarketing, thirdPartyMarketing) =>
         val user = userCreationService.createUser(firstName, secondName, email, username, password, gnmMarketing, thirdPartyMarketing, idRequest.clientIp)
         val groupAgreeReturnUrlOpt = ThirdPartyConditions.agreeUrlOpt(idRequest, idUrlBuilder).orElse(idRequest.returnUrl)
-        val registeredUser: Future[Response[User]] = api.register(user, trackingData, idRequest.returnUrl)
-
+        var registeredUser: Future[Response[User]] = null
+        try {
+          registeredUser = api.register(user, trackingData, idRequest.returnUrl, eagent, dataSubjectId)
+        } catch  {
+          case e: Exception =>
+            e.printStackTrace()
+            val form = registrationForm.bindFromRequest().withError("dataSubjectId", e.getMessage)
+            form.fill(firstName, secondName, email, username, "", eagent, dataSubjectId, thirdPartyMarketing, gnmMarketing)
+            return Future.successful(redirectToRegistrationPage(form, idRequest.returnUrl, skipConfirmation, idRequest.groupCode))
+        }
         val result: Future[Result] = registeredUser flatMap {
           case Left(errors) => {
             val formWithError = errors.foldLeft(boundForm) { (form, error) =>
@@ -112,7 +123,7 @@ class RegistrationController @Inject()( returnUrlVerifier : ReturnUrlVerifier,
                   form.withError(context.getOrElse(""), description)
               }
             }
-            formWithError.fill(firstName, secondName, email, username, "", eagent, dataSubjectId, thirdPartyMarketing, gnmMarketing)
+            formWithError.fill(firstName, secondName, email, username, "", "", "", thirdPartyMarketing, gnmMarketing)
             Future.successful(redirectToRegistrationPage(formWithError, idRequest.returnUrl, skipConfirmation, idRequest.groupCode))
           }
 
@@ -145,7 +156,6 @@ class RegistrationController @Inject()( returnUrlVerifier : ReturnUrlVerifier,
         }
         result
     }
-
     boundForm.fold[Future[Result]](onError, onSuccess)
   }
 
