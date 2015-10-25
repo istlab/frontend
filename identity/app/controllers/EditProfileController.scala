@@ -55,7 +55,7 @@ class EditProfileController @Inject()(idUrlBuilder: IdentityUrlBuilder,
         val forms = ProfileForms(user, page == publicPage).bindFromRequest(request)
         val futureFormOpt = forms.activeForm.value map {
           data: UserFormData =>
-            identityApiClient.saveUser(user.id, data.toUserUpdate(user), user.auth) map {
+            identityApiClient.saveUser(user.id, data.toUserUpdate(user), user.auth, user.primaryEmailAddress) map {
               case Left(errors) =>
                 forms.withErrors(errors)
 

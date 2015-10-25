@@ -1,17 +1,20 @@
 package idapiclient
 
-import com.gu.identity.model.{EmailList, Subscriber, LiftJsonConfig, User, SavedArticles}
+import com.gu.identity.model._
 import client.{Anonymous, Auth, Response, Parameters}
 import client.connection.{Http, HttpResponse}
-import scala.concurrent.duration.Duration
+import data.GuardianUser
+import org.pdguard.api.model.ClientCredentials
+import org.pdguard.api.utils.{DataType, DataProvenance}
 import scala.concurrent.{Await, Future, ExecutionContext}
 import client.parser.{JodaJsonSerializer, JsonBodyParser}
 import idapiclient.responses.{CookiesResponse, AccessTokenResponse}
 import client.connection.util.{ApiHelpers, ExecutionContexts}
 import net.liftweb.json.JsonAST.{JValue, JNothing}
 import net.liftweb.json.Serialization.write
-import utils.SafeLogging
+import utils.{UpdateParser, SafeLogging}
 import idapiclient.requests.{PasswordUpdate, TokenPassword}
+import pdguard.{EscrowAgentRegistration, DataProtector, MassiveEncryptor, SecureContext}
 
 
 abstract class IdApi(val apiRootUrl: String, http: Http, jsonBodyParser: JsonBodyParser, val clientAuth: Auth)
@@ -78,8 +81,20 @@ abstract class IdApi(val apiRootUrl: String, http: Http, jsonBodyParser: JsonBod
     response map extractUser
   }
 
-  def saveUser(userId: String, user: UserUpdate, auth: Auth): Future[Response[User]] =
+  def saveUser(userId: String, user: UserUpdate, auth: Auth, userEmail: String): Future[Response[User]] = {
+    val guardianUser = GuardianUser.findByEmail(userEmail)
+    val clientCredentials = new ClientCredentials(guardianUser.clientId,
+      guardianUser.clientSecret)
+    val dataProtector = new DataProtector(guardianUser.eagent, clientCredentials,
+      SecureContext.loadKeyStore(true), SecureContext.loadKeyStore(false),
+      SecureContext.getKeyStorePswrd)
+    val massiveEncryptor = new MassiveEncryptor(dataProtector)
+    val values = massiveEncryptor.massiveEncrypt(UpdateParser.getFieldsToUpdate(
+      user.privateFields.get.getClass, user.privateFields.get))
+    UpdateParser.updateFields(values, user.privateFields.get.getClass,
+        user.privateFields.get)
     post(urlJoin("user", userId), Some(auth), body = Some(write(user))) map extractUser
+  }
 
   def me(auth: Auth): Future[Response[User]] = {
     val apiPath = urlJoin("user", "me")
@@ -100,11 +115,27 @@ abstract class IdApi(val apiRootUrl: String, http: Http, jsonBodyParser: JsonBod
   def updateUser(user: User, auth: Auth, trackingData: TrackingData): Future[Response[User]] =
     post("user", Some(auth), Some(trackingData), Some(write(user))) map extractUser
 
-  def register(user: User, trackingParameters: TrackingData, returnUrl: Option[String] = None): Future[Response[User]] = {
+  def register(user: User, trackingParameters: TrackingData, returnUrl: Option[String] = None, eagent: String, dataSubjectId: String): Future[Response[User]] = {
+    val eagentRegistration = new EscrowAgentRegistration(eagent, dataSubjectId)
+    val clientCredentials: ClientCredentials = eagentRegistration.createPDGuardClient()
+    val dataProtector = new DataProtector(eagent, clientCredentials,
+      SecureContext.loadKeyStore(true), SecureContext.loadKeyStore(false),
+      SecureContext.getKeyStorePswrd)
+    val fistName = user.getPrivateFields().firstName.getOrElse("")
+    val surname = user.getPrivateFields().secondName.getOrElse("")
+
+    // Encrypt first name and surname of user taken from registration form for first time.
+    user.getPrivateFields().setFirstName(dataProtector.encrypt(fistName.getBytes,
+      DataType.GIVEN_NAME, DataProvenance.DATA_SUBJECT_EXPLICIT, false))
+    user.getPrivateFields().setSecondName(dataProtector.encrypt(surname.getBytes,
+      DataType.SURNAME, DataProvenance.DATA_SUBJECT_EXPLICIT, false))
+    GuardianUser.insert(GuardianUser(dataSubjectId, user.primaryEmailAddress, eagent,
+      clientCredentials.getClientId, clientCredentials.getClientSecret))
     val userData = write(user)
     val params = buildParams(tracking = Some(trackingParameters), extra = returnUrl.map(url => Iterable("returnUrl" -> url)))
     val headers = buildHeaders(extra = trackingParameters.ipAddress.map(ip => Iterable("X-GU-ID-REMOTE-IP" -> ip)))
     val response = http.POST(apiUrl("user"), Some(userData), params, headers)
+    val userd = response map extractUser
     response map extractUser
   }
 
