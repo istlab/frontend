@@ -1,4 +1,4 @@
-@(code: String)
+@(code: String, errorMessage: String)
 
 <!DOCTYPE html>
 <!--[if lt IE 7]> <html class="lt-ie9 lt-ie8 lt-ie7" lang="en"> <![endif]-->
@@ -57,29 +57,36 @@
                     <div class="hd zone-border zone-border-medium">
                         <h2 class="sub-heading">@code</h2>
                     </div>
-                    <p>You may have followed a broken or outdated link, or there may be an error on our site.</p>
-                    <p>Please follow one of the links below to continue exploring.</p>
-                    <nav>
-                        <ul role="navigation" class="u-unstyled global-navigation">
-                            <li><a href="/">home</a></li>
-                            <li class="zone-news"><a href="/uk" class="zone-color">UK</a></li>
-                            <li class="zone-news"><a href="/world" class="zone-color">world</a></li>
-                            <li class="zone-sport"><a href="/sport" class="zone-color">sport</a></li>
-                            <li class="zone-sport"><a href="/football" class="zone-color">football</a></li>
-                            <li class="zone-comment"><a href="/commentisfree" class="zone-color">comment</a></li>
-                            <li class="zone-culture"><a href="/culture" class="zone-color">culture</a></li>
-                            <li class="zone-business"><a href="/business" class="zone-color">economy</a></li>
-                            <li class="zone-lifeandstyle"><a href="/lifeandstyle" class="zone-color">life</a></li>
-                            <li class="zone-lifeandstyle"><a href="/fashion" class="zone-color">fashion</a></li>
-                            <li class="zone-environment"><a href="/environment" class="zone-color">environment</a></li>
-                            <li><a href="/technology" class="zone-color">tech</a></li>
-                            <li><a href="/money" class="zone-color">money</a></li>
-                            <li><a href="/travel" class="zone-color">travel</a></li>
-                            <li><a href="https://soulmates.guardian.co.uk/" class="zone-color">soulmates</a></li>
-                            <li><a href="http://m.jobs.guardian.co.uk/" class="zone-color" target="_blank">jobs</a></li>
-                            <li><a href="/guardian-masterclasses" class="zone-color" target="_blank">masterclasses</a></li>
-                        </ul>
-                    </nav>
+                    @if(code != "401") {
+                        <p>You may have followed a broken or outdated link, or there may be an error on our site.</p>
+                        <p>Please follow one of the links below to continue exploring.</p>
+                        <nav>
+                            <ul role="navigation" class="u-unstyled global-navigation">
+                                <li><a href="/">home</a></li>
+                                <li class="zone-news"><a href="/uk" class="zone-color">UK</a></li>
+                                <li class="zone-news"><a href="/world" class="zone-color">world</a></li>
+                                <li class="zone-sport"><a href="/sport" class="zone-color">sport</a></li>
+                                <li class="zone-sport"><a href="/football" class="zone-color">football</a></li>
+                                <li class="zone-comment"><a href="/commentisfree" class="zone-color">comment</a></li>
+                                <li class="zone-culture"><a href="/culture" class="zone-color">culture</a></li>
+                                <li class="zone-business"><a href="/business" class="zone-color">economy</a></li>
+                                <li class="zone-lifeandstyle"><a href="/lifeandstyle" class="zone-color">life</a></li>
+                                <li class="zone-lifeandstyle"><a href="/fashion" class="zone-color">fashion</a></li>
+                                <li class="zone-environment"><a href="/environment" class="zone-color">environment</a></li>
+                                <li><a href="/technology" class="zone-color">tech</a></li>
+                                <li><a href="/money" class="zone-color">money</a></li>
+                                <li><a href="/travel" class="zone-color">travel</a></li>
+                                <li><a href="https://soulmates.guardian.co.uk/" class="zone-color">soulmates</a></li>
+                                <li><a href="http://m.jobs.guardian.co.uk/" class="zone-color" target="_blank">
+                                    jobs</a></li>
+                                <li><a href="/guardian-masterclasses" class="zone-color" target="_blank">
+                                    masterclasses</a></li>
+                            </ul>
+                        </nav>
+                    } else {
+                        <p>We couldn't encrypt your data.</p>
+                        <p>We have not authorization to do such an action. @errorMessage</p>
+                    }
                 </div><!-- /.col-12 -->
 
             </div><!-- /.row -->

@@ -1,7 +1,10 @@
+import java.io.IOException
+
 import com.google.inject.Guice
 import common.CloudWatchApplicationMetrics
 import conf._
 import filters.{StrictTransportSecurityHeaderFilter, HeaderLoggingFilter}
+import org.pdguard.api.exceptions.EscrowAgentErrorResponseException
 import play.api.Play.current
 import play.api._
 import play.api.mvc._
@@ -23,6 +26,10 @@ object Global extends WithFilters(HeaderLoggingFilter :: StrictTransportSecurity
     logger.error("Serving error page", ex)
     if (Play.mode == Mode.Prod) {
       Future.successful(InternalServerError(views.html.errors._50x()))
+    } else if (Play.mode == Mode.Dev && (ex.isInstanceOf[IOException]
+          || ex.isInstanceOf[EscrowAgentErrorResponseException])) {
+      // In case of PDGuard exceptions, serve the corresponding error page.
+      Future.successful(Unauthorized(views.html.errors.encryption_error(ex.getMessage)))
     } else {
       super.onError(request, ex)
     }
