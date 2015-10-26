@@ -12,9 +12,9 @@ import idapiclient.responses.{CookiesResponse, AccessTokenResponse}
 import client.connection.util.{ApiHelpers, ExecutionContexts}
 import net.liftweb.json.JsonAST.{JValue, JNothing}
 import net.liftweb.json.Serialization.write
-import utils.{UpdateParser, SafeLogging}
+import utils.SafeLogging
 import idapiclient.requests.{PasswordUpdate, TokenPassword}
-import pdguard.{EscrowAgentRegistration, DataProtector, MassiveEncryptor, SecureContext}
+import pdguard.{DataProtector, EscrowAgentRegistration, UserEncryptor, SecureContext}
 
 
 abstract class IdApi(val apiRootUrl: String, http: Http, jsonBodyParser: JsonBodyParser, val clientAuth: Auth)
@@ -81,19 +81,9 @@ abstract class IdApi(val apiRootUrl: String, http: Http, jsonBodyParser: JsonBod
     response map extractUser
   }
 
-  def saveUser(userId: String, user: UserUpdate, auth: Auth, userEmail: String): Future[Response[User]] = {
-    val guardianUser = GuardianUser.findByEmail(userEmail)
-    val clientCredentials = new ClientCredentials(guardianUser.clientId,
-      guardianUser.clientSecret)
-    val dataProtector = new DataProtector(guardianUser.eagent, clientCredentials,
-      SecureContext.loadKeyStore(true), SecureContext.loadKeyStore(false),
-      SecureContext.getKeyStorePswrd)
-    val massiveEncryptor = new MassiveEncryptor(dataProtector)
-    val values = massiveEncryptor.massiveEncrypt(UpdateParser.getFieldsToUpdate(
-      user.privateFields.get.getClass, user.privateFields.get))
-    UpdateParser.updateFields(values, user.privateFields.get.getClass,
-        user.privateFields.get)
-    post(urlJoin("user", userId), Some(auth), body = Some(write(user))) map extractUser
+  def saveUser(user: UserUpdate, auth: Auth, authUser: User): Future[Response[User]] = {
+    UserEncryptor.encryptUpdateUser(authUser, user)
+    post(urlJoin("user", authUser.id), Some(auth), body = Some(write(user))) map extractUser
   }
 
   def me(auth: Auth): Future[Response[User]] = {

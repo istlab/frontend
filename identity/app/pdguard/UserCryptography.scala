@@ -2,6 +2,7 @@ package pdguard
 
 import com.gu.identity.model.User
 import data.GuardianUser
+import idapiclient.UserUpdate
 import org.pdguard.api.exceptions.AccessDeniedException
 import org.pdguard.api.model.ClientCredentials
 import org.pdguard.api.utils.{InteractionPurpose, DataUse, DataProvenance}
@@ -29,14 +30,17 @@ class UserCryptography(dataProtector: DataProtector) {
    *
    * @return A map with the fields and their encrypted values.
    */
-  def massiveEncrypt(fieldToEncrypt: Map[String, String]): Map[String, String] = {
+  def massiveEncrypt(fieldToEncrypt: Map[String, String], user: User): Map[String, String] = {
     var encryptedValues: Map[String, String] = Map()
     fieldToEncrypt.foreach {
       case(key, value) =>
         println(key, value)
+        val existedValue = user.getPrivateFields().getClass.getMethod("get"
+          + key.capitalize).invoke(user.getPrivateFields())
+        val update = if (existedValue != null) true else false
         encryptedValues += (key -> dataProtector.encrypt(value.getBytes("UTF-8"),
             UpdateParser.dataType.get(key).get, DataProvenance.DATA_SUBJECT_EXPLICIT,
-            true))
+            update))
     }
     encryptedValues
   }
@@ -88,5 +92,28 @@ object UserDecryptor {
       user.privateFields.getClass, user.privateFields))
     UpdateParser.updateFields(decryptedValues, user.privateFields.getClass,
       user.privateFields)
+  }
+}
+
+
+object UserEncryptor {
+  /**
+   * This method encrypts updated fields of an authenticated guardian user.
+   *
+   * @param user Authenticated guardian user.
+   * @param updatedUser Updated guardina user.
+   */
+  def encryptUpdateUser(user: User, updatedUser: UserUpdate) = {
+    val guardianUser = GuardianUser.findByEmail(user.primaryEmailAddress)
+    val clientCredentials = new ClientCredentials(guardianUser.clientId,
+      guardianUser.clientSecret)
+    val dataProtector = new DataProtector(guardianUser.eagent, clientCredentials,
+      SecureContext.loadKeyStore(true), SecureContext.loadKeyStore(false),
+      SecureContext.getKeyStorePswrd)
+    val massiveEncryptor = new UserCryptography(dataProtector)
+    val values = massiveEncryptor.massiveEncrypt(UpdateParser.getFieldsToUpdate(
+      updatedUser.privateFields.get.getClass, updatedUser.privateFields.get), user)
+    UpdateParser.updateFields(values, updatedUser.privateFields.get.getClass,
+      updatedUser.privateFields.get)
   }
 }

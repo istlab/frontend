@@ -8,6 +8,7 @@ import common.ExecutionContexts
 import form._
 import idapiclient.IdApiClient
 import model._
+import pdguard.UserDecryptor
 import play.api.data.Form
 import play.api.i18n.{ MessagesApi, I18nSupport }
 import play.api.mvc.{AnyContent, Controller, Request}
@@ -40,7 +41,9 @@ class EditProfileController @Inject()(idUrlBuilder: IdentityUrlBuilder,
 
   protected def displayForm(page: OmniPage) = CSRFAddToken {
     recentlyAuthenticated.async { implicit request =>
-      profileFormsView(page.tracking, ProfileForms(request.user, false))
+      val user = request.user
+      UserDecryptor.decryptAuthUser(user)
+      profileFormsView(page.tracking, ProfileForms(user, false))
     }
   }
 
@@ -52,14 +55,17 @@ class EditProfileController @Inject()(idUrlBuilder: IdentityUrlBuilder,
       implicit request =>
         val idRequest = idRequestParser(request)
         val user = request.user
+        UserDecryptor.decryptAuthUser(user)
         val forms = ProfileForms(user, page == publicPage).bindFromRequest(request)
         val futureFormOpt = forms.activeForm.value map {
           data: UserFormData =>
-            identityApiClient.saveUser(user.id, data.toUserUpdate(user), user.auth, user.primaryEmailAddress) map {
+            identityApiClient.saveUser(data.toUserUpdate(user), user.auth, user) map {
               case Left(errors) =>
                 forms.withErrors(errors)
 
-              case Right(user) => forms.bindForms(user)
+              case Right(user) =>
+                UserDecryptor.decryptAuthUser(user)
+                forms.bindForms(user)
             }
         }
 
