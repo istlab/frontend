@@ -18,7 +18,6 @@ object UpdateParser {
   lazy val dataType = Map(
     ("firstName", DataType.GIVEN_NAME),
     ("secondName", DataType.SURNAME),
-    ("country", DataType.COUNTRY),
     ("postcode", DataType.HOME_POSTAL_CODE),
     ("address1", DataType.HOME_STREET_ADDRESS),
     ("address2", DataType.HOME_STREET_ADDRESS),
