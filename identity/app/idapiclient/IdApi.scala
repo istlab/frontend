@@ -82,7 +82,8 @@ abstract class IdApi(val apiRootUrl: String, http: Http, jsonBodyParser: JsonBod
   }
 
   def saveUser(user: UserUpdate, auth: Auth, authUser: User): Future[Response[User]] = {
-    UserEncryptor.encryptUpdateUser(authUser, user)
+    if (user.privateFields.isDefined)
+      UserEncryptor.encryptUpdateUser(authUser, user)
     post(urlJoin("user", authUser.id), Some(auth), body = Some(write(user))) map extractUser
   }
 
