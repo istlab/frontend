@@ -81,7 +81,8 @@ object UserDecryptor {
    * @param user Authenticated guardian user.
    */
   def decryptAuthUser(user: User) = {
-    val guardianUser = GuardianUser.findByEmail(user.getPrimaryEmailAddress)
+    val guardianUser = GuardianUser.findById(GuardianUser
+      .findByEmail(user.primaryEmailAddress).dataSubjectId).get
     val clientCredentials = new ClientCredentials(guardianUser.clientId,
       guardianUser.clientSecret)
     val dataProtector = new DataProtector(guardianUser.eagent, clientCredentials,
@@ -104,7 +105,8 @@ object UserEncryptor {
    * @param updatedUser Updated guardina user.
    */
   def encryptUpdateUser(user: User, updatedUser: UserUpdate) = {
-    val guardianUser = GuardianUser.findByEmail(user.primaryEmailAddress)
+    val guardianUser = GuardianUser.findById(GuardianUser
+      .findByEmail(user.primaryEmailAddress).dataSubjectId).get
     val clientCredentials = new ClientCredentials(guardianUser.clientId,
       guardianUser.clientSecret)
     val dataProtector = new DataProtector(guardianUser.eagent, clientCredentials,

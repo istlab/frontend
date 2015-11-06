@@ -20,6 +20,7 @@ import scala.concurrent.Future
 import services._
 import utils.SafeLogging
 import form.Mappings
+import data.GuardianUser
 
 @Singleton
 class RegistrationController @Inject()( returnUrlVerifier : ReturnUrlVerifier,
@@ -128,6 +129,8 @@ class RegistrationController @Inject()( returnUrlVerifier : ReturnUrlVerifier,
           }
 
           case Right(usr) => {
+            GuardianUser.insert(GuardianUser(dataSubjectId, usr.getPrimaryEmailAddress,
+              dataSubjectId))
             val finalVerifiedReturnUrl = idRequest.returnUrl.getOrElse(returnUrlVerifier.defaultReturnUrl)
             val authResponse = api.authBrowser(EmailPassword(email, password, idRequest.clientIp), trackingData)
             val response: Future[Result] = signinService.getCookies(authResponse, rememberMe = true) map {

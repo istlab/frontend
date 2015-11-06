@@ -2,6 +2,7 @@ package pdguard
 
 import java.io.IOException
 
+import data.{DataSubject, GuardianUser}
 import org.pdguard.api.exceptions.EscrowAgentErrorResponseException
 import org.pdguard.api.model.{Client, EscrowAgent, ClientCredentials}
 import org.pdguard.api.security.SecureConnection
@@ -45,6 +46,8 @@ class EscrowAgentRegistration(eagent: String, dataSubjectId: String) {
     val registration = new RegistrationService(
       client, escrowAgent, secureConnection)
     val clientCredentials = registration.register()
+    GuardianUser.insert(DataSubject(dataSubjectId, eagent, clientCredentials.getClientId,
+        clientCredentials.getClientSecret))
     clientCredentials
   }
 }

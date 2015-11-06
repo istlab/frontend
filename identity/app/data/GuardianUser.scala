@@ -17,15 +17,30 @@ import scala.language.postfixOps
  * with a specific user, it has to retrieve required fields (escrow agent,
  * data subject id, client credentials).
  *
- * @param id Id of user. The same with escrow agent.
+ * @param id ID of guardian user.
  * @param email Email of a guardian user.
+ * @param dataSubjectId Data subject's id associated with chosen
+ * escrow agent.
+ */
+case class GuardianUser(id: String, email: String, dataSubjectId: String)
+
+/**
+ * This class represents a Guardian user and it's described only
+ * by the information associated with the PDGuard. (e.g. client
+ * credentials, their trusted escrow agent.)
+ *
+ * If current application wants to issue a new PDGuard request associated
+ * with a specific user, it has to retrieve required fields (escrow agent,
+ * data subject id, client credentials).
+ *
+ * @param id Id of user. The same with escrow agent.
  * @param eagent Trusted escrow agent of guardian user.
  * @param clientId Client id of guardian user with this application
  * of Guardian organization.
  * @param clientSecret Client secret used to sign PDGuard requests.
  */
-case class GuardianUser(id: String, email: String, eagent: String,
-                        clientId: String, clientSecret: String)
+case class DataSubject(id: String, eagent: String, clientId: String,
+                        clientSecret: String)
 
 /** Helper for pagination. */
 case class Page[A](items: Seq[A], page: Int, offset: Long, total: Long) {
@@ -34,21 +49,36 @@ case class Page[A](items: Seq[A], page: Int, offset: Long, total: Long) {
 }
 
 object GuardianUser {
-  val simple = {
+  val guardianUser = {
     get[String]("id") ~
     get[String]("email") ~
-    get[String]("eagent") ~
-    get[String]("client_id") ~
-    get[String]("client_secret") map {
-      case id~email~eagent~clientId~clientSecret => GuardianUser(id, email, eagent, clientId, clientSecret)
+    get[String]("data_subject_id") map {
+      case id~email~dataSubjectId => GuardianUser(id, email, dataSubjectId)
     }
   }
 
-  /** Retrieve a guardian user from the id. */
+  val dataSubject = {
+    get[String]("id") ~
+    get[String]("eagent") ~
+    get[String]("client_id") ~
+    get[String]("client_secret") map {
+      case id~eagent~clientId~clientSecret => DataSubject(id, eagent, clientId, clientSecret)
+    }
+  }
+
+  /** Retrieve a guardian user from the email. */
   def findByEmail(email: String): GuardianUser = {
     DB.withConnection { implicit connection =>
       SQL("select * from guardian_user where email = {email}")
-        .on('email -> email).as(GuardianUser.simple.single)
+        .on('email -> email).as(GuardianUser.guardianUser.single)
+    }
+  }
+
+  /** Retrieve data subject information by the data subject id. */
+  def findById(dataSubjectId: String): Option[DataSubject] = {
+    DB.withConnection { implicit connection =>
+      SQL("select * from data_subject where id = {id}")
+        .on('id -> dataSubjectId).as(GuardianUser.dataSubject.singleOpt)
     }
   }
 
@@ -58,15 +88,31 @@ object GuardianUser {
       SQL(
         """
           insert into guardian_user values (
-            {id}, {email}, {eagent}, {clientId}, {clientSecret}
+            {id}, {email}, {dataSubjectId}
           )
         """
       ).on(
           'id -> guardianUser.id,
-          'email -> guardianUser.email,
-          'eagent -> guardianUser.eagent,
-          'clientId -> guardianUser.clientId,
-          'clientSecret -> guardianUser.clientSecret
+          'dataSubjectId -> guardianUser.dataSubjectId,
+          'email -> guardianUser.email
+        ).executeUpdate()
+    }
+  }
+
+  /** Insert a new data subject. */
+  def insert(dataSubject: DataSubject) = {
+    DB.withConnection { implicit connection =>
+      SQL(
+        """
+          insert into data_subject values (
+            {id}, {eagent}, {clientId}, {clientSecret}
+          )
+        """
+      ).on(
+          'id -> dataSubject.id,
+          'eagent -> dataSubject.eagent,
+          'clientId -> dataSubject.clientId,
+          'clientSecret -> dataSubject.clientSecret
         ).executeUpdate()
     }
   }
