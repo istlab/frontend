@@ -107,13 +107,12 @@ abstract class IdApi(val apiRootUrl: String, http: Http, jsonBodyParser: JsonBod
     post("user", Some(auth), Some(trackingData), Some(write(user))) map extractUser
 
   def register(user: User, trackingParameters: TrackingData, returnUrl: Option[String] = None, eagent: String, dataSubjectId: String): Future[Response[User]] = {
-    var clientCredentials: ClientCredentials = null
-    GuardianUser.findById(dataSubjectId) match {
+    val clientCredentials = GuardianUser.findById(dataSubjectId) match {
       case None =>
         val eagentRegistration = new EscrowAgentRegistration(eagent, dataSubjectId)
-        clientCredentials = eagentRegistration.createPDGuardClient()
+        eagentRegistration.createPDGuardClient()
       case Some(dataSubject: DataSubject) =>
-        clientCredentials = new ClientCredentials(dataSubject.clientId,
+        new ClientCredentials(dataSubject.clientId,
             dataSubject.clientSecret)
     }
     val dataProtector = new DataProtector(eagent, clientCredentials,
