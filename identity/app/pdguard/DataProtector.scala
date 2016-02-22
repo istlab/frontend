@@ -1,7 +1,5 @@
 package pdguard
 
-import java.security.KeyStore
-
 import org.pdguard.api.DataProtection
 import org.pdguard.api.exceptions.AccessDeniedException
 import org.pdguard.api.model.ClientCredentials
@@ -15,14 +13,12 @@ import org.apache.commons.codec.binary.Hex.encodeHex
  *
  * @author Thodoris Sotiropoulos
  */
-class DataProtector(eagent: String, clientCredentials: ClientCredentials,
-    keyStore: KeyStore, trustStore: KeyStore, keyStorePswrd: String) {
+class DataProtector(eagent: String, clientCredentials: ClientCredentials) {
   /**
    * Object which is responsible for the encryption and
    * decryption of data.
    */
-  val dataProtection = new DataProtection(eagent, clientCredentials,
-    trustStore, keyStore, keyStorePswrd)
+  val dataProtection = new DataProtection(eagent, clientCredentials)
 
   /**
    * Encrypt the specified data block.

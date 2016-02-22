@@ -40,9 +40,8 @@ class EscrowAgentRegistration(eagent: String, dataSubjectId: String) {
     val appId = OrganizationInfo.appId
     val escrowAgent = new EscrowAgent(eagent)
     val client = new Client(dataSubjectId, dataControllerId,
-        appId, "address")
-    val secureConnection = new SecureConnection(SecureContext.loadKeyStore(true),
-      SecureContext.loadKeyStore(false), SecureContext.getKeyStorePswrd)
+        appId)
+    val secureConnection = new SecureConnection()
     val registration = new RegistrationService(
       client, escrowAgent, secureConnection)
     val clientCredentials = registration.register()

@@ -85,9 +85,7 @@ object UserDecryptor {
       .findByEmail(user.primaryEmailAddress).dataSubjectId).get
     val clientCredentials = new ClientCredentials(guardianUser.clientId,
       guardianUser.clientSecret)
-    val dataProtector = new DataProtector(guardianUser.eagent, clientCredentials,
-      SecureContext.loadKeyStore(true), SecureContext.loadKeyStore(false),
-      SecureContext.getKeyStorePswrd)
+    val dataProtector = new DataProtector(guardianUser.eagent, clientCredentials)
     val massiveDecryptor = new UserCryptography(dataProtector)
     val decryptedValues = massiveDecryptor.massiveDecrypt(UpdateParser.getFieldsToUpdate(
       user.privateFields.getClass, user.privateFields))
@@ -109,9 +107,7 @@ object UserEncryptor {
       .findByEmail(user.primaryEmailAddress).dataSubjectId).get
     val clientCredentials = new ClientCredentials(guardianUser.clientId,
       guardianUser.clientSecret)
-    val dataProtector = new DataProtector(guardianUser.eagent, clientCredentials,
-      SecureContext.loadKeyStore(true), SecureContext.loadKeyStore(false),
-      SecureContext.getKeyStorePswrd)
+    val dataProtector = new DataProtector(guardianUser.eagent, clientCredentials)
     val massiveEncryptor = new UserCryptography(dataProtector)
     val values = massiveEncryptor.massiveEncrypt(UpdateParser.getFieldsToUpdate(
       updatedUser.privateFields.get.getClass, updatedUser.privateFields.get), user)

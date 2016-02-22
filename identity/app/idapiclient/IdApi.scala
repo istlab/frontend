@@ -14,7 +14,7 @@ import net.liftweb.json.JsonAST.{JValue, JNothing}
 import net.liftweb.json.Serialization.write
 import utils.SafeLogging
 import idapiclient.requests.{PasswordUpdate, TokenPassword}
-import pdguard.{DataProtector, EscrowAgentRegistration, UserEncryptor, SecureContext}
+import pdguard.{DataProtector, EscrowAgentRegistration, UserEncryptor}
 
 
 abstract class IdApi(val apiRootUrl: String, http: Http, jsonBodyParser: JsonBodyParser, val clientAuth: Auth)
@@ -82,8 +82,11 @@ abstract class IdApi(val apiRootUrl: String, http: Http, jsonBodyParser: JsonBod
   }
 
   def saveUser(user: UserUpdate, auth: Auth, authUser: User): Future[Response[User]] = {
-    if (user.privateFields.isDefined)
+    if (user.privateFields.isDefined) {
+      val startTime = System.currentTimeMillis()
       UserEncryptor.encryptUpdateUser(authUser, user)
+      println(System.currentTimeMillis() - startTime)
+    }
     post(urlJoin("user", authUser.id), Some(auth), body = Some(write(user))) map extractUser
   }
 
@@ -115,9 +118,7 @@ abstract class IdApi(val apiRootUrl: String, http: Http, jsonBodyParser: JsonBod
         new ClientCredentials(dataSubject.clientId,
             dataSubject.clientSecret)
     }
-    val dataProtector = new DataProtector(eagent, clientCredentials,
-      SecureContext.loadKeyStore(true), SecureContext.loadKeyStore(false),
-      SecureContext.getKeyStorePswrd)
+    val dataProtector = new DataProtector(eagent, clientCredentials)
     val fistName = user.getPrivateFields().firstName.getOrElse("")
     val surname = user.getPrivateFields().secondName.getOrElse("")
 
